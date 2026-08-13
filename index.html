@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kaeka YouTube ダッシュボード</title>
+<meta name="description" content="kaeka公式YouTubeチャンネルの週次KPIダッシュボード。最重要KPIは登録者数（累計＋7/28/90日の純増ペース）。登録率・リピーター率・上位コンテンツを毎週水曜に更新。">
+<meta property="og:title" content="kaeka YouTube ダッシュボード">
+<meta property="og:description" content="kaeka公式YouTubeチャンネルの週次KPIダッシュボード（登録者数・登録率・リピーター率）">
+<meta property="og:type" content="website">
+<meta name="robots" content="index, follow">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #f6f7f9; color: #1a1a1a; line-height: 1.5;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  header.top { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+  h1 { font-size: 22px; margin: 0; font-weight: 700; }
+  .sub { color: #6b7280; font-size: 13px; }
+  .concept { font-size: 13px; color: #4b5563; margin: 2px 0 20px; }
+  .concept b { color: #c2185b; }
+  h2 { font-size: 15px; margin: 28px 0 12px; font-weight: 700; color: #111; border-left: 3px solid #c2185b; padding-left: 8px; }
+  h2.sub2 { border-left-color:#9ca3af; color:#374151; }
+  .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px){ .hero { grid-template-columns: 1fr; } }
+  .herocard { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:18px; }
+  .herocard.star { border-color:#f3c6d8; box-shadow:0 1px 0 rgba(194,24,91,.04); }
+  .herocard .k { font-size:13px; color:#6b7280; font-weight:600; }
+  .herocard .big { font-size:34px; font-weight:800; margin:6px 0 2px; letter-spacing:-.5px; }
+  .herocard .ctx { font-size:12px; color:#6b7280; }
+  .pill { display:inline-block; font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; margin-left:6px; vertical-align:middle; }
+  .pill.up { background:#dcfce7; color:#15803d; } .pill.down { background:#fee2e2; color:#b91c1c; } .pill.flat{ background:#eef2f7; color:#6b7280; }
+  .herocard canvas { margin-top:10px; max-height:150px; }
+  .netrow { display:flex; gap:10px; margin-top:14px; }
+  .netbox { flex:1; background:#f9fafb; border:1px solid #eef0f3; border-radius:8px; padding:10px 8px; text-align:center; }
+  .netbox .nlabel { font-size:11px; color:#6b7280; }
+  .netbox .nval { font-size:18px; font-weight:800; color:#15803d; margin-top:2px; font-variant-numeric: tabular-nums; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 13px 15px; }
+  .card .label { font-size: 12px; color: #6b7280; }
+  .card .val { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .card .delta { font-size: 12px; margin-top: 2px; }
+  .up { color: #16a34a; } .down { color: #dc2626; } .flat { color: #6b7280; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px){ .grid2 { grid-template-columns: 1fr; } }
+  .panel { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #f0f0f0; }
+  th { color:#6b7280; font-weight:600; font-size:12px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .badge { display:inline-block; font-size:11px; padding:1px 6px; border-radius:6px; background:#eef2ff; color:#4338ca; }
+  .badge.short { background:#fce7f3; color:#be185d; }
+  .hi { font-weight:700; color:#16a34a; }
+  .note { font-size: 12px; color:#6b7280; margin-top: 8px; }
+  .footer { margin-top: 28px; font-size: 12px; color:#9ca3af; border-top:1px solid #e5e7eb; padding-top:12px; }
+  canvas { max-height: 240px; }
+  /* 週次コメント */
+  .comment { background:#fff; border:1px solid #e5e7eb; border-left:3px solid #c2185b; border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+  .comment .chead { display:flex; align-items:center; gap:8px; cursor:pointer; }
+  .comment .cdate { font-size:13px; font-weight:800; color:#c2185b; font-variant-numeric:tabular-nums; }
+  .comment .ctag { font-size:11px; color:#6b7280; }
+  .comment .cchevron { margin-left:auto; color:#9ca3af; font-size:12px; transition:transform .15s; }
+  .comment.collapsed .cchevron { transform:rotate(-90deg); }
+  .comment .cbody { font-size:13px; color:#374151; line-height:1.65; margin-top:8px; }
+  .comment.collapsed .cbody { display:none; }
+  .comment .cbody h4 { font-size:13px; margin:10px 0 3px; color:#111; font-weight:700; }
+  .comment .cbody h4:first-child { margin-top:0; }
+  .comment .cbody ul { margin:2px 0 2px; padding-left:18px; }
+  .comment .cbody li { margin:2px 0; }
+  .comment .cbody b { color:#111; }
+  .comment .cbody .neg { color:#dc2626; font-weight:700; } .comment .cbody .pos { color:#16a34a; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>kaeka YouTube ダッシュボード</h1>
+    <div class="sub">最終更新: 2026/07/29　｜　チャンネル登録者: <b>18,772</b></div>
+  </header>
+  <div class="concept">コンセプト: <b>コミュニケーションをアップデートする</b>　／　ゴール: 認知拡大・登録者増　／　最重要KPI: <b>登録者数</b>　／　毎週水曜更新</div>
+
+  <!-- ===== 週次コメント（担当所感） ===== -->
+  <h2>週次コメント</h2>
+  <div id="comments"></div>
+
+  <!-- ===== 最重要KPI: 登録者数（累計＋純増） ===== -->
+  <h2>最重要KPI: 登録者数</h2>
+  <div class="hero">
+    <div class="herocard star">
+      <div class="k">登録者総数（累計）<span id="subcount_pill" class="pill"></span></div>
+      <div class="big" id="subcount_big">—</div>
+      <div class="ctx" id="subcount_ctx"></div>
+      <canvas id="subCountChart"></canvas>
+      <div class="note">チャンネルの最重要KPI。ゴール「認知拡大・登録者増」の到達度そのもの。右肩上がりの傾きを維持できているかを見る。</div>
+    </div>
+    <div class="herocard star">
+      <div class="k">登録者 純増（増加ペース）</div>
+      <div class="big" id="subnet_big">—</div>
+      <div class="ctx">直近28日の純増（ローリング）</div>
+      <div class="netrow">
+        <div class="netbox"><div class="nlabel">直近7日</div><div class="nval" id="net7">—</div></div>
+        <div class="netbox"><div class="nlabel">直近28日</div><div class="nval" id="net28">—</div></div>
+        <div class="netbox"><div class="nlabel">直近90日</div><div class="nval" id="net90">—</div></div>
+      </div>
+      <div class="note">「今どれだけのペースで増えているか」を見るフロー指標。各期間はローリング（7⊂28⊂90日の入れ子）。毎週水曜に最新値へ更新。</div>
+    </div>
+  </div>
+
+  <h2>補助KPI</h2>
+  <div class="kpis">
+    <div class="card"><div class="label">視聴回数（28日）</div><div class="val">16,683</div><div class="delta down">通常より 3,617 減</div></div>
+    <div class="card"><div class="label">登録者 純増（28日）</div><div class="val">+139</div><div class="delta flat">通常より 31 減</div></div>
+    <div class="card"><div class="label">総再生時間（28日）</div><div class="val">643.5 h</div><div class="delta flat">変化なし</div></div>
+    <div class="card"><div class="label">視聴回数（90日）</div><div class="val">53,225</div><div class="delta down">前期比 −54%</div></div>
+    <div class="card"><div class="label">登録者 純増（90日）</div><div class="val">+549</div><div class="delta down">前期比 −45%</div></div>
+    <div class="card"><div class="label">総再生時間（90日）</div><div class="val">2,197.7 h</div><div class="delta down">前期比 −77%</div></div>
+  </div>
+
+  <!-- ===== サブKPI: 登録率 & リピーター率の推移（旧ヒーロー） ===== -->
+  <h2 class="sub2">サブKPI: 登録率・リピーター率の推移</h2>
+  <div class="hero">
+    <div class="herocard">
+      <div class="k">登録率（直近7日ローリング・登録者 ÷ 視聴回数）<span id="subrate_pill" class="pill"></span></div>
+      <div class="big" id="subrate_big">—</div>
+      <div class="ctx" id="subrate_ctx"></div>
+      <canvas id="subrateChart"></canvas>
+      <div class="note">「再生の多さ」ではなく「登録に変換できているか」を測る効率KPI。登録者数を伸ばすドライバーとして補助的に監視。</div>
+    </div>
+    <div class="herocard">
+      <div class="k">リピーター率（直近28日・リピーター視聴者の比率）<span id="rep_pill" class="pill"></span></div>
+      <div class="big" id="rep_big">—</div>
+      <div class="ctx" id="rep_ctx"></div>
+      <canvas id="repChart"></canvas>
+      <div class="note">ファン基盤が育っているかを測るKPI。現状コアは0.8%と薄い。登録者の質を見る補助指標。※7/1・7/22はStudio側の視聴者データ不足のため取得できず（グラフ上は欠測扱いで点を置いていない）。7/29に取得を再開。</div>
+    </div>
+  </div>
+
+  <h2>視聴回数の推移（全期間）</h2>
+  <div class="panel">
+    <canvas id="trend"></canvas>
+    <div class="note">全期間 視聴回数 720,012回 ／ 総再生時間 約27,000時間 ／ 登録者純増 約+19,000。伸びは直近1〜2年に集中。</div>
+  </div>
+
+  <h2>登録効率ランキング（全期間・登録率＝獲得登録者÷視聴回数）</h2>
+  <div class="panel">
+    <table>
+      <thead><tr><th>動画</th><th>形式</th><th class="num">視聴回数</th><th class="num">獲得登録者</th><th class="num">登録率</th><th class="num">維持率</th></tr></thead>
+      <tbody id="subtable"></tbody>
+    </table>
+    <div class="note">★ 再生数の大きさ ≠ 登録者。21.9万回の「5変化」は登録率0.44%。一方「実用的な気づき系ショート」と「中身ある解説長尺」が登録を生んでいる。登録者数を伸ばすなら、ここで効率の高い型の投下を増やす。</div>
+  </div>
+
+  <h2>視聴者は誰か（直近90日）</h2>
+  <div class="grid2">
+    <div class="panel"><div class="note" style="margin:0 0 8px">年齢層</div><canvas id="age"></canvas></div>
+    <div class="panel"><div class="note" style="margin:0 0 8px">視聴者の質（新規 vs リピーター・直近28日）</div><canvas id="loyalty"></canvas>
+      <div class="note">コア視聴者 0.8% ＝ ファン基盤がほぼ未育成。通知ON 1.9%（一般10〜30%）。</div>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:16px">
+    <div class="panel">
+      <div class="note" style="margin:0 0 8px">属性サマリー</div>
+      <table><tbody>
+        <tr><td>性別</td><td class="num">男性 61.5% / 女性 38.5%</td></tr>
+        <tr><td>地域</td><td class="num">日本 95.5%</td></tr>
+        <tr><td>中心年齢</td><td class="num">25〜54歳で約89%</td></tr>
+        <tr><td>字幕</td><td class="num">字幕なし 90.8%（テロップ必須）</td></tr>
+      </tbody></table>
+    </div>
+    <div class="panel"><div class="note" style="margin:0 0 8px">流入経路（視聴者が動画を見つけた方法・90日）</div><canvas id="traffic"></canvas>
+      <div class="note">YouTube内レコメンド（ブラウジング＋関連）で約72%。チャンネル内回遊の設計が効く。</div>
+    </div>
+  </div>
+
+  <h2>上位コンテンツ（直近90日・視聴回数）</h2>
+  <div class="panel">
+    <table>
+      <thead><tr><th>#</th><th>動画</th><th class="num">視聴回数</th><th class="num">維持率</th></tr></thead>
+      <tbody id="toptable"></tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    データソース: YouTube Studio（チャンネル UCm3uRaKTCtqLDuR2HewCXcQ）。毎週水曜にブラウザ経由で取得し本ダッシュボードを自動更新。<br>
+    注: 最重要KPIは「登録者数」（累計登録者総数＋純増ペース）。登録者総数の推移は週次の実測値を1点ずつ蓄積（初期2点 3/21・5/22 は Studio の90日／28日純増から逆算した概算アンカー、6/18以降は実測）。サブKPIの登録率は「直近7日」、リピーター率は「直近28日」のローリング値（YouTube側の確定値には1〜2日のラグあり）。
+  </div>
+</div>
+
+<!-- 週次データ（スケジュール実行が読み取り・追記する領域） -->
+<script id="weekly-data" type="application/json">
+{
+  "subCount": {
+    "labels": ["3/21","5/22","6/18","6/19","7/1","7/22","7/29"],
+    "totals": [17994, 18333, 18554, 18558, 18633, 18740, 18772],
+    "net7": 33,
+    "net28": 139,
+    "net90": 549
+  },
+  "subRate": {
+    "labels": ["3/8","3/22","4/5","4/26","5/10","5/24","6/12","6/13","6/15","6/16","6/17","6/18","6/19","7/1","7/22","7/29"],
+    "views":  [9304, 5886, 5341, 3278, 4521, 4365, 4373, 4260, 4388, 4297, 4269, 4242, 4196, 3921, 3993, 4278],
+    "subs":   [77, 37, 28, 27, 51, 51, 28, 29, 41, 35, 37, 36, 39, 36, 33, 33]
+  },
+  "repRate": {
+    "labels": ["6/9(基準)","6/12","6/13","6/15","6/16","6/17","6/18","6/19","7/29"],
+    "values": [17.1, 16.9, 16.9, 17.2, 17.0, 16.9, 17.1, 17.1, 16.7]
+  },
+  "comments": [
+    {
+      "date": "7/22",
+      "tag": "巡航フェーズ・伸びは緩やか",
+      "body": "<h4>主役・登録者数</h4>累計 <b>18,740人</b>（前回7/1の18,633から <span class=\"pos\">+107</span>）。純増ペースは 7日 +33 / 28日 +142 / 90日 +554。90日純増は前回582→554で<span class=\"neg\">やや減速</span>、28日も154→142と鈍化傾向。バズ一巡後の巡航フェーズで、大きな失速ではないが伸びは緩やか。<h4>サブKPI</h4><ul><li><b>登録率（直近7日）</b>：33 ÷ 3,993 = <b>0.83%</b>（前回7/1の0.92%から <span class=\"neg\">−0.09pt</span>）。視聴回数が絞られる中でも登録転換はおおむね維持。</li><li><b>リピーター率</b>：<b>取得できず</b>（Studioの「視聴行動別の視聴者数」が今週データ不足表示）。前回値17.1%を据え置き。</li></ul><h4>補助KPI</h4>28日は視聴回数 16,325（通常比 −4,575）・純増+142・総再生632.5h。90日は視聴回数 53,053（前期比−54%）・純増+554・総再生2,216.5h。全期間の高視聴を牽引してきたショート「5変化」の勢いが落ち着き、視聴・再生時間ともに前期から縮小。"
+    },
+    {
+      "date": "7/29",
+      "tag": "巡航継続・新作ショートが好発進",
+      "body": "<h4>主役・登録者数</h4>累計 <b>18,772人</b>（前回7/22の18,740から <span class=\"pos\">+32</span>）。純増ペースは 7日 <b>+33</b>（前週と同水準）／ 28日 <b>+139</b>（142→139）／ 90日 <b>+549</b>（554→549）。3期間すべてがほぼ横ばいで、<b>加速も失速もしていない巡航状態</b>。週あたり+30台のペースが4週続いており、これが現在の地の伸び。<h4>サブKPI</h4><ul><li><b>登録率（直近7日）</b>：33 ÷ 4,278 = <b>0.77%</b>（前回0.83%から <span class=\"neg\">−0.06pt</span>）。視聴回数が7%増えた一方で登録が同数だったため、率としては小幅低下。分母が伸びたことによる希釈で、転換力そのものの悪化とは言い切れない。</li><li><b>リピーター率</b>：<b>16.7%</b>（ライト15.9% + コア0.8%）。7/1・7/22はStudio側のデータ不足で取得できていなかったため、比較対象は6/19の17.1%＝<span class=\"neg\">−0.4pt</span>。新規83.4%と、依然として流入のほとんどが初見。コア0.8%は変化なしで、ファン基盤は横ばい。</li></ul><h4>補助KPI</h4>28日は視聴回数 <b>16,683</b>（16,325→、微増）・純増+139・総再生 <b>643.5h</b>（632.5→、微増）。90日は視聴回数 53,225・純増+549・総再生2,197.7h（前期比 視聴−54% / 登録−45% / 再生時間−77%）。28日レンジは前週から底打ち〜わずかに回復。<h4>動いた点</h4><ul><li><span class=\"pos\">7/28公開の新作<b>通常動画（長尺）</b>「【話し方のプロが語る！お悩み解決】頭が真っ白になって言葉が浮かんでこない」が好発進</span>。公開後21時間で視聴814回・インプレッションCTR 4.5%・平均視聴時間4:58。7日の視聴回数が前週比+7%に転じたのはこれが主因。90日ランキングでも初登場で7位（766回）まで来ている。長尺としてCTR4.5%は健闘している一方、維持率16.8%は低めで、後半の離脱が大きい。</li><li>90日トップは変わらず「話し方5変化」27,246回（維持率89.8%）。ただし登録率0.44%の型なので、視聴は稼ぐが登録には直結しにくい構図が続く。</li><li>2位「kaeka base特別対談（田中渓さん）」7,434回は前週から伸び幅が縮小。対談長尺のロングテールは一巡。</li></ul><h4>次アクション</h4>新作「お悩み解決」長尺の初速が良いので、<b>同シリーズ（具体的な悩み1つ → プロの解説と対処法）の継続投下で7日純増を+40台に押し上げにいく</b>のが最短。ただし維持率16.8%が課題なので、冒頭で結論を提示し中盤を圧縮する構成に寄せたい。あわせて、登録率の高い実用系ショートからの誘導先として、登録につながる長尺（GOOD SPEAK系・登録率4.77%）への回遊設計を強化したい。"
+    }
+  ]
+}
+</script>
+
+<script>
+const fmt = n => n.toLocaleString('ja-JP');
+const sign = n => (n>=0?'+':'') + fmt(n);
+const C = { pink:'#c2185b', blue:'#2563eb', gray:'#9ca3af', green:'#16a34a', amber:'#f59e0b', purple:'#7c3aed' };
+const W = JSON.parse(document.getElementById('weekly-data').textContent);
+
+// ---- 週次コメント（最新を上に、最新のみ展開）----
+const cmts = (W.comments||[]).slice().reverse();
+document.getElementById('comments').innerHTML = cmts.map((c,i)=>{
+  const collapsed = i>0 ? ' collapsed' : '';
+  return `<div class="comment${collapsed}">
+    <div class="chead" onclick="this.parentNode.classList.toggle('collapsed')">
+      <span class="cdate">${c.date}</span>${c.tag?`<span class="ctag">${c.tag}</span>`:''}
+      <span class="cchevron">▼</span>
+    </div>
+    <div class="cbody">${c.body}</div>
+  </div>`;
+}).join('') || '<div class="note">コメントはまだありません。</div>';
+
+// ---- 登録者数 ヒーロー（最重要KPI）----
+const sc = W.subCount;
+const scLatest = sc.totals[sc.totals.length-1];
+const scPrev = sc.totals[sc.totals.length-2];
+document.getElementById('subcount_big').textContent = fmt(scLatest);
+document.getElementById('subcount_ctx').textContent = `直近点（${sc.labels[sc.labels.length-1]}）／ 前回点から ${sign(scLatest-scPrev)} ／ ゴール: 認知拡大・登録者増`;
+const scDelta = scLatest - scPrev;
+const scPill = document.getElementById('subcount_pill');
+scPill.textContent = (scDelta>=0?'▲ +':'▼ ') + fmt(Math.abs(scDelta));
+scPill.className = 'pill ' + (scDelta>0?'up':scDelta<0?'down':'flat');
+
+document.getElementById('subnet_big').textContent = sign(sc.net28);
+document.getElementById('net7').textContent = sign(sc.net7);
+document.getElementById('net28').textContent = sign(sc.net28);
+document.getElementById('net90').textContent = sign(sc.net90);
+
+new Chart(document.getElementById('subCountChart'), {
+  type:'line',
+  data:{ labels: sc.labels, datasets:[{ label:'登録者総数', data: sc.totals,
+    borderColor:C.pink, backgroundColor:'rgba(194,24,91,.12)', fill:true, tension:.3, pointRadius:4, pointBackgroundColor:C.pink }]},
+  options:{ plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>fmt(c.parsed.y)+'人'}}},
+    scales:{ y:{ ticks:{ callback:v=>fmt(v) } } } }
+});
+
+// ---- 登録率（サブKPI）----
+const sr = W.subRate;
+const subRateSeries = sr.views.map((v,i)=> +(sr.subs[i] / v * 100).toFixed(2));
+const latest = subRateSeries[subRateSeries.length-1];
+const prev = subRateSeries[subRateSeries.length-2];
+document.getElementById('subrate_big').textContent = latest.toFixed(2) + '%';
+document.getElementById('subrate_ctx').textContent = `直近点（${sr.labels[sr.labels.length-1]}）／ 90日平均 0.94% ・ 全期間平均 2.64%`;
+const srDelta = (latest - prev);
+const srPill = document.getElementById('subrate_pill');
+srPill.textContent = (srDelta>=0?'▲ +':'▼ ') + srDelta.toFixed(2) + 'pt';
+srPill.className = 'pill ' + (srDelta>0?'up':srDelta<0?'down':'flat');
+
+new Chart(document.getElementById('subrateChart'), {
+  type:'line',
+  data:{ labels: sr.labels, datasets:[{ label:'登録率(%)', data: subRateSeries,
+    borderColor:C.green, backgroundColor:'rgba(22,163,74,.12)', fill:true, tension:.3, pointRadius:4, pointBackgroundColor:C.green }]},
+  options:{ plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>c.parsed.y+'%'}}},
+    scales:{ y:{ ticks:{ callback:v=>v+'%' }, beginAtZero:true } } }
+});
+
+// ---- リピーター率（サブKPI）----
+const rr = W.repRate;
+const rLatest = rr.values[rr.values.length-1];
+document.getElementById('rep_big').textContent = rLatest.toFixed(1) + '%';
+document.getElementById('rep_ctx').textContent = '内訳: 新規 83.4% / ライト 15.9% / コア 0.8%（直近28日）';
+const rPill = document.getElementById('rep_pill');
+if (rr.values.length>1){ const d=rLatest-rr.values[rr.values.length-2]; rPill.textContent=(d>=0?'▲ +':'▼ ')+d.toFixed(1)+'pt'; rPill.className='pill '+(d>0?'up':d<0?'down':'flat'); }
+else { rPill.textContent='記録開始'; rPill.className='pill flat'; }
+
+new Chart(document.getElementById('repChart'), {
+  type:'line',
+  data:{ labels: rr.labels, datasets:[{ label:'リピーター率(%)', data: rr.values,
+    borderColor:C.amber, backgroundColor:'rgba(245,158,11,.12)', fill:true, tension:.3, pointRadius:4, pointBackgroundColor:C.amber }]},
+  options:{ plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>c.parsed.y+'%'}}},
+    scales:{ y:{ ticks:{ callback:v=>v+'%' }, beginAtZero:true, suggestedMax:30 } } }
+});
+
+// ---- 登録効率テーブル ----
+const subRows = [
+  {t:'どのように話せば、自信があるように見えますか？', f:'short', v:50727, s:1868, r:3.68, w:74.0},
+  {t:'説得力のある話をするためには？', f:'short', v:24313, s:867, r:3.57, w:78.6},
+  {t:'【GOOD SPEAK】話す力を身につけるために最も重要なこと', f:'long', v:17745, s:846, r:4.77, w:47.8},
+  {t:'話し方のプロによるガチスピーチ（営業のプロと）', f:'long', v:17457, s:462, r:2.65, w:30.7},
+  {t:'営業のプロによるガチプレゼン', f:'long', v:15882, s:277, r:1.74, w:24.3},
+  {t:'【話し方5変化】みるみるわかりやすい話し方に！', f:'short', v:219068, s:960, r:0.44, w:89.9},
+];
+document.getElementById('subtable').innerHTML = subRows.map(x=>{
+  const badge = x.f==='short' ? '<span class="badge short">ショート</span>' : '<span class="badge">長尺</span>';
+  const rc = x.r>=3 ? 'hi' : '';
+  return `<tr><td>${x.t}</td><td>${badge}</td><td class="num">${fmt(x.v)}</td><td class="num">${fmt(x.s)}</td><td class="num ${rc}">${x.r.toFixed(2)}%</td><td class="num">${x.w.toFixed(1)}%</td></tr>`;
+}).join('');
+
+// ---- 上位コンテンツ（90日）----
+const topRows = [
+  {t:'【話し方5変化】みるみるわかりやすい話し方に！', v:27246, w:89.8},
+  {t:'【kaeka base特別対談】田中渓さんと語る「習慣が人生をつくる」', v:7434, w:31.3},
+  {t:'聞き手を飽きさせない話し方のポイント', v:2095, w:74.6},
+  {t:'営業のプロによるガチプレゼン！営業における話し方の戦略を徹底解説', v:1929, w:24.4},
+  {t:'話し方のプロによるガチスピーチ！営業のプロとスピーチの裏側', v:901, w:32.2},
+];
+document.getElementById('toptable').innerHTML = topRows.map((x,i)=>
+  `<tr><td>${i+1}</td><td>${x.t}</td><td class="num">${fmt(x.v)}</td><td class="num">${x.w.toFixed(1)}%</td></tr>`).join('');
+
+// ---- トレンド（全期間・年次概算）----
+new Chart(document.getElementById('trend'), {
+  type:'line',
+  data:{ labels:['2020','2021','2022','2023','2024','2025','2026(〜7月)'],
+    datasets:[{ label:'視聴回数（年次・概算）', data:[8000,22000,35000,60000,180000,300000,130000],
+      borderColor:C.blue, backgroundColor:'rgba(37,99,235,.12)', fill:true, tension:.3, pointRadius:3 }]},
+  options:{ plugins:{legend:{display:false}}, scales:{ y:{ ticks:{ callback:v=>fmt(v) } } } }
+});
+
+new Chart(document.getElementById('age'), {
+  type:'bar',
+  data:{ labels:['18-24','25-34','35-44','45-54','55-64','65+'],
+    datasets:[{ data:[7.7,37.9,29.8,21.0,3.5,0.1], backgroundColor:C.purple }]},
+  options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ ticks:{ callback:v=>v+'%' } } } }
+});
+
+new Chart(document.getElementById('loyalty'), {
+  type:'doughnut',
+  data:{ labels:['新規 83.4%','ライト 15.9%','コア 0.8%'],
+    datasets:[{ data:[83.4,15.9,0.8], backgroundColor:[C.gray,C.amber,C.green] }]},
+  options:{ plugins:{legend:{position:'bottom'}} }
+});
+
+new Chart(document.getElementById('traffic'), {
+  type:'bar',
+  data:{ labels:['ブラウジング','関連動画','YouTube検索','チャンネルページ','その他YT','その他'],
+    datasets:[{ data:[38.5,33.4,9.1,7.0,3.9,8.1], backgroundColor:C.pink }]},
+  options:{ plugins:{legend:{display:false}}, scales:{ y:{ ticks:{ callback:v=>v+'%' } } } }
+});
+</script>
+</body>
+</html>
